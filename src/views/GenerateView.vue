@@ -585,9 +585,6 @@ const copyPrompt = () => {
 
             <p class="text-xs text-muted-foreground">
               API Key 将保存在本地，不会上传到任何服务器。
-              <a href="https://www.zyflow.cn" target="_blank" class="text-primary hover:underline">
-                点击获取 API Key
-              </a>
             </p>
 
             <div class="flex gap-3">

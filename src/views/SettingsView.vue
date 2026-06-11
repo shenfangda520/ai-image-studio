@@ -129,7 +129,7 @@ const sizes = [
           <div class="glass-card">
             <h2 class="text-lg font-semibold mb-4">API Key</h2>
             <p class="text-sm text-muted-foreground mb-4">
-              用于调用 zyflow.cn 的图片生成 API
+              用于调用图片生成 API（OpenAI 兼容接口）
             </p>
 
             <div class="space-y-4">
@@ -157,21 +157,13 @@ const sizes = [
                 <input
                   v-model="settingsStore.apiUrl"
                   type="url"
-                  placeholder="https://www.zyflow.cn/v1/chat/completions"
+                  placeholder="https://api.example.com/v1/chat/completions"
                   class="glass-input"
                 />
                 <p class="text-xs text-muted-foreground mt-1">
-                  默认使用 zyflow.cn，如使用其他兼容 API 可修改
+                  默认为 OpenAI 兼容接口，可修改为其他兼容 API
                 </p>
               </div>
-
-              <a
-                href="https://www.zyflow.cn"
-                target="_blank"
-                class="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-              >
-                点击获取 API Key →
-              </a>
             </div>
           </div>
 

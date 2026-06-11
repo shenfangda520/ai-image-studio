@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = 'https://www.zyflow.cn/v1/chat/completions';
+const DEFAULT_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export interface GenerateParams {
   apiKey: string;

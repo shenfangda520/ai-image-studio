@@ -5,7 +5,7 @@ const STORAGE_KEY = 'ai-studio-settings';
 
 export const useSettingsStore = defineStore('settings', () => {
   const apiKey = ref('');
-  const apiUrl = ref('https://www.zyflow.cn/v1/chat/completions');
+  const apiUrl = ref('https://api.openai.com/v1/chat/completions');
   const model = ref('codex-gpt-image-2');
   const size = ref('auto');
   const showApiKeyOnStart = ref(true);
@@ -16,7 +16,7 @@ export const useSettingsStore = defineStore('settings', () => {
       if (saved) {
         const data = JSON.parse(saved);
         apiKey.value = data.apiKey || '';
-        apiUrl.value = data.apiUrl || 'https://www.zyflow.cn/v1/chat/completions';
+        apiUrl.value = data.apiUrl || 'https://api.openai.com/v1/chat/completions';
         model.value = data.model || 'codex-gpt-image-2';
         size.value = data.size || 'auto';
         showApiKeyOnStart.value = data.showApiKeyOnStart !== false;
