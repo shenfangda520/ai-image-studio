@@ -101,8 +101,8 @@ ai-image-studio/
 首次使用需要配置 API Key：
 
 1. 打开应用 → 设置 → API 设置
-2. 输入从 [zyflow.cn](https://www.zyflow.cn) 获取的 API Key
-3. API 地址默认为 `https://www.zyflow.cn/v1/chat/completions`，如使用其他兼容 API 可修改
+2. 输入你的 API Key
+3. API 地址默认为 OpenAI 兼容接口，如使用其他兼容 API 可自行修改
 
 ## 📄 License
 
