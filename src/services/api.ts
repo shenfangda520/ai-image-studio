@@ -17,6 +17,32 @@ export interface GenerateResult {
   };
 }
 
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
+function getErrorMessage(data: any, fallback: string): string {
+  const message =
+    data?.error?.message ||
+    data?.error ||
+    data?.message ||
+    data?.detail?.error?.message ||
+    data?.detail?.message ||
+    data?.detail?.detail ||
+    data?.detail ||
+    fallback;
+
+  return typeof message === 'string' ? message : JSON.stringify(message);
+}
+
 function buildContent(prompt: string, images?: { name: string; dataUrl: string }[]): any[] {
   const content: any[] = [{ type: 'text', text: prompt }];
 
@@ -122,7 +148,19 @@ export async function generateImage(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`API error ${response.status}: ${errorText}`);
+    let errorBody: unknown = errorText;
+
+    try {
+      errorBody = JSON.parse(errorText);
+    } catch {
+      // keep raw text
+    }
+
+    throw new ApiError(
+      `API error ${response.status}: ${getErrorMessage(errorBody, errorText || response.statusText)}`,
+      response.status,
+      errorBody
+    );
   }
 
   const data = await response.json();

@@ -62,19 +62,19 @@ const goToGenerate = () => {
 </script>
 
 <template>
-  <div class="p-8 max-w-7xl mx-auto">
+  <div class="px-4 py-5 sm:p-6 lg:p-8 max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 animate-in">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5 sm:mb-8 animate-in">
       <div>
-        <h1 class="text-3xl font-bold mb-2">
+        <h1 class="text-2xl sm:text-3xl font-bold mb-1.5 sm:mb-2">
           <span class="gradient-text">图片库</span>
         </h1>
-        <p class="text-muted-foreground">管理和浏览所有生成的图片</p>
+        <p class="text-sm sm:text-base text-muted-foreground">管理和浏览所有生成的图片</p>
       </div>
 
       <!-- Selection Actions -->
       <Transition name="fade">
-        <div v-if="hasSelection" class="flex items-center gap-3">
+        <div v-if="hasSelection" class="flex flex-wrap items-center gap-2 sm:gap-3">
           <span class="text-sm text-muted-foreground">
             已选择 {{ imageStore.selectedImages.size }} 张
           </span>
@@ -97,8 +97,8 @@ const goToGenerate = () => {
     </div>
 
     <!-- Filters -->
-    <div class="flex items-center gap-4 mb-6">
-      <div class="relative flex-1 max-w-md">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
+      <div class="relative w-full flex-1 sm:max-w-md">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           v-model="searchQuery"
@@ -127,7 +127,7 @@ const goToGenerate = () => {
         <option value="oldest">最早</option>
       </select>
 
-      <div class="glass rounded-xl p-1 flex gap-1">
+      <div class="glass rounded-xl p-1 flex gap-1 self-start">
         <button
           @click="viewMode = 'grid'"
           :class="cn(
@@ -153,7 +153,7 @@ const goToGenerate = () => {
     <template v-if="filteredImages.length > 0">
       <div
         :class="cn(
-          viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4' : 'space-y-3'
+          viewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4' : 'space-y-3'
         )"
       >
         <div
@@ -256,9 +256,9 @@ const goToGenerate = () => {
 
     <!-- Empty State -->
     <template v-else>
-      <div class="glass-card text-center py-20 rounded-2xl">
-        <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-pink-500/20 flex items-center justify-center">
-          <ImageIcon class="w-10 h-10 text-primary/50" />
+      <div class="glass-card text-center py-12 sm:py-20 rounded-2xl">
+        <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-pink-500/20 flex items-center justify-center">
+          <ImageIcon class="w-8 h-8 sm:w-10 sm:h-10 text-primary/50" />
         </div>
         <h3 class="text-lg font-medium mb-2">暂无图片</h3>
         <p class="text-sm text-muted-foreground mb-6">

@@ -30,5 +30,7 @@ npm-debug.log*
 
 # Misc
 *.tgz
+*.dmg
 coverage/
 .nyc_output/
+vite.config.ts.timestamp-*

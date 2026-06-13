@@ -132,18 +132,18 @@ const useTemplate = (template: typeof templates[0]) => {
 </script>
 
 <template>
-  <div class="p-8 max-w-7xl mx-auto">
+  <div class="px-4 py-5 sm:p-6 lg:p-8 max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="mb-8 animate-in">
-      <h1 class="text-3xl font-bold mb-2">
+    <div class="mb-5 sm:mb-8 animate-in">
+      <h1 class="text-2xl sm:text-3xl font-bold mb-1.5 sm:mb-2">
         <span class="gradient-text">模板中心</span>
       </h1>
-      <p class="text-muted-foreground">选择专业模板，快速生成营销素材</p>
+      <p class="text-sm sm:text-base text-muted-foreground">选择专业模板，快速生成营销素材</p>
     </div>
 
     <!-- Filters -->
-    <div class="flex flex-wrap items-center gap-4 mb-6">
-      <div class="relative flex-1 min-w-[200px] max-w-md">
+    <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 mb-5 sm:mb-6">
+      <div class="relative w-full flex-1 sm:min-w-[200px] sm:max-w-md">
         <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           v-model="searchQuery"
@@ -153,13 +153,13 @@ const useTemplate = (template: typeof templates[0]) => {
         />
       </div>
 
-      <div class="flex gap-2 flex-wrap">
+      <div class="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
         <button
           v-for="cat in categories"
           :key="cat.id"
           @click="selectedCategory = cat.id"
           :class="cn(
-            'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200',
+            'px-3 sm:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap',
             selectedCategory === cat.id
               ? 'bg-primary text-white shadow-lg shadow-primary/30'
               : 'glass hover:bg-white/10'
@@ -172,7 +172,7 @@ const useTemplate = (template: typeof templates[0]) => {
     </div>
 
     <!-- Templates Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
       <div
         v-for="template in filteredTemplates"
         :key="template.id"
@@ -235,9 +235,9 @@ const useTemplate = (template: typeof templates[0]) => {
 
     <!-- Empty State -->
     <template v-if="filteredTemplates.length === 0">
-      <div class="glass-card text-center py-20 rounded-2xl">
-        <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-pink-500/20 flex items-center justify-center">
-          <Search class="w-10 h-10 text-primary/50" />
+      <div class="glass-card text-center py-12 sm:py-20 rounded-2xl">
+        <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-pink-500/20 flex items-center justify-center">
+          <Search class="w-8 h-8 sm:w-10 sm:h-10 text-primary/50" />
         </div>
         <h3 class="text-lg font-medium mb-2">未找到模板</h3>
         <p class="text-sm text-muted-foreground">

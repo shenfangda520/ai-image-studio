@@ -96,6 +96,75 @@ const models = [
 ]
 
 const countOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+const MULTI_IMAGE_CONCURRENCY = 2
+const MAX_RETRY_COUNT = 2
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504])
+
+const wait = (ms: number) => new Promise(resolve => window.setTimeout(resolve, ms))
+
+const shouldRetry = (err: any) => {
+  const status = Number(err?.status)
+  return RETRYABLE_STATUS.has(status)
+}
+
+async function runWithConcurrency<T>(
+  total: number,
+  concurrency: number,
+  task: (index: number) => Promise<T>
+) {
+  const results: PromiseSettledResult<T>[] = new Array(total)
+  let nextIndex = 0
+
+  const workers = Array.from({ length: Math.min(total, concurrency) }, async () => {
+    while (nextIndex < total) {
+      const currentIndex = nextIndex++
+
+      try {
+        results[currentIndex] = {
+          status: 'fulfilled',
+          value: await task(currentIndex),
+        }
+      } catch (reason) {
+        results[currentIndex] = {
+          status: 'rejected',
+          reason,
+        }
+      }
+    }
+  })
+
+  await Promise.all(workers)
+  return results
+}
+
+const generateOneImage = async (fullPrompt: string, index: number) => {
+  let lastError: any
+
+  for (let attempt = 0; attempt <= MAX_RETRY_COUNT; attempt++) {
+    try {
+      return await generateImage(
+        {
+          apiKey: settingsStore.apiKey,
+          prompt: fullPrompt,
+          model: settingsStore.model,
+          size: settingsStore.size,
+          images: uploadedImages.value.length > 0 ? uploadedImages.value : undefined,
+        },
+        settingsStore.apiUrl
+      )
+    } catch (err: any) {
+      lastError = err
+
+      if (attempt >= MAX_RETRY_COUNT || !shouldRetry(err)) {
+        break
+      }
+
+      await wait(700 * (attempt + 1) + index * 120)
+    }
+  }
+
+  throw lastError
+}
 
 const handleDragOver = (e: DragEvent) => {
   e.preventDefault()
@@ -168,47 +237,49 @@ const generateImages = async () => {
     const stylePrefix = styles.find(s => s.id === selectedStyle.value)?.promptPrefix || ''
     const fullPrompt = stylePrefix + prompt.value
 
-    // Send parallel requests for each image
-    const promises = Array.from({ length: count.value }, (_, index) =>
-      generateImage(
-        {
-          apiKey: settingsStore.apiKey,
-          prompt: fullPrompt,
-          model: settingsStore.model,
-          size: settingsStore.size,
-          images: uploadedImages.value.length > 0 ? uploadedImages.value : undefined,
-        },
-        settingsStore.apiUrl
-      ).then(result => {
-        isGeneratingCount.value++
-        appStore.updateProgress(Math.round((isGeneratingCount.value / count.value) * 100))
-        return result
-      })
+    const results = await runWithConcurrency(
+      count.value,
+      MULTI_IMAGE_CONCURRENCY,
+      async (index) => {
+        try {
+          return await generateOneImage(fullPrompt, index)
+        } finally {
+          isGeneratingCount.value++
+          appStore.updateProgress(Math.round((isGeneratingCount.value / count.value) * 100))
+        }
+      }
     )
 
-    const results = await Promise.allSettled(promises)
+    const failures: string[] = []
 
     for (const result of results) {
-      if (result.status === 'fulfilled') {
-        const images = result.value.images
-        generatedImages.value.push(...images)
+      if (result.status === 'rejected') {
+        failures.push(result.reason?.message || '生成失败')
+        continue
+      }
 
-        // Add to image store
-        for (const url of images) {
-          imageStore.addImage({
-            url,
-            prompt: prompt.value,
-            style: selectedStyle.value,
-            size: settingsStore.size,
-            model: settingsStore.model,
-          })
-        }
+      generatedImages.value.push(...result.value.images)
+
+      for (const url of result.value.images) {
+        imageStore.addImage({
+          url,
+          prompt: prompt.value,
+          style: selectedStyle.value,
+          size: settingsStore.size,
+          model: settingsStore.model,
+        })
       }
     }
 
-    appStore.finishGeneration()
+    if (failures.length > 0) {
+      const successCount = generatedImages.value.length
+      errorMessage.value = successCount > 0
+        ? `已生成 ${successCount} 张，${failures.length} 张失败：${failures[0]}`
+        : `生成失败：${failures[0]}`
+    }
   } catch (err: any) {
     errorMessage.value = err.message || '生成失败，请重试'
+  } finally {
     appStore.finishGeneration()
   }
 }
@@ -226,13 +297,13 @@ const copyPrompt = () => {
 </script>
 
 <template>
-  <div class="p-8 max-w-7xl mx-auto">
+  <div class="px-4 py-5 sm:p-6 lg:p-8 max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="mb-8 animate-in">
-      <h1 class="text-3xl font-bold mb-2">
+    <div class="mb-5 sm:mb-8 animate-in">
+      <h1 class="text-2xl sm:text-3xl font-bold mb-1.5 sm:mb-2">
         <span class="gradient-text">AI 图片生成</span>
       </h1>
-      <p class="text-muted-foreground">上传产品图或输入描述，一键生成专业营销素材</p>
+      <p class="text-sm sm:text-base text-muted-foreground">上传产品图或输入描述，一键生成专业营销素材</p>
     </div>
 
     <!-- API Key Missing Banner -->
@@ -240,13 +311,13 @@ const copyPrompt = () => {
       v-if="!settingsStore.apiKey"
       class="glass-card mb-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/30"
     >
-      <div class="flex items-center gap-3">
-        <Key class="w-5 h-5 text-amber-500" />
-        <div class="flex-1">
-          <p class="text-sm font-medium">请先配置 API Key</p>
-          <p class="text-xs text-muted-foreground">需要 API Key 才能使用图片生成功能</p>
-        </div>
-        <button @click="openApiKeyModal" class="glass-button text-sm">
+        <div class="flex items-center gap-3">
+          <Key class="w-5 h-5 text-amber-500 flex-shrink-0" />
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium">请先配置 API Key</p>
+            <p class="text-xs text-muted-foreground">需要 API Key 才能使用图片生成功能</p>
+          </div>
+        <button @click="openApiKeyModal" class="glass-button flex-shrink-0 text-sm">
           配置
         </button>
       </div>
@@ -258,19 +329,19 @@ const copyPrompt = () => {
         v-if="errorMessage"
         class="glass-card mb-6 bg-gradient-to-r from-red-500/10 to-pink-500/10 border-red-500/30"
       >
-        <div class="flex items-center gap-3">
-          <X class="w-5 h-5 text-red-500" />
-          <p class="text-sm flex-1">{{ errorMessage }}</p>
-          <button @click="errorMessage = ''" class="text-muted-foreground hover:text-foreground">
+        <div class="flex items-start gap-3">
+          <X class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <p class="text-sm min-w-0 flex-1 break-words">{{ errorMessage }}</p>
+          <button @click="errorMessage = ''" class="text-muted-foreground hover:text-foreground flex-shrink-0">
             <X class="w-4 h-4" />
           </button>
         </div>
       </div>
     </Transition>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
       <!-- Left Panel - Input -->
-      <div class="lg:col-span-2 space-y-6">
+      <div class="lg:col-span-2 space-y-4 sm:space-y-6">
         <!-- Prompt Input -->
         <div class="glass-card">
           <div class="flex items-center justify-between mb-3">
@@ -287,17 +358,17 @@ const copyPrompt = () => {
           <textarea
             v-model="prompt"
             placeholder="例如：科技感十足的手机产品图，蓝色渐变背景，光影效果..."
-            class="glass-input min-h-[120px] resize-none"
+            class="glass-input min-h-[112px] sm:min-h-[120px] resize-none"
           />
-          <p class="text-xs text-muted-foreground mt-2">
-            💡 提示：描述越详细，生成效果越好。可以包含风格、颜色、构图等信息。
+          <p class="text-xs text-muted-foreground mt-2 leading-relaxed">
+            提示：描述越详细，生成效果越好。可以包含风格、颜色、构图等信息。
           </p>
         </div>
 
         <!-- Upload Zone -->
         <div
           :class="cn(
-            'upload-zone rounded-2xl p-6 text-center transition-all duration-300',
+            'upload-zone rounded-2xl p-4 sm:p-6 text-center transition-all duration-300',
             isDragging && 'border-primary bg-primary/5 scale-[1.02]'
           )"
           @dragover="handleDragOver"
@@ -305,8 +376,8 @@ const copyPrompt = () => {
           @drop="handleDrop"
         >
           <template v-if="!uploadedImage">
-            <div class="w-12 h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-primary/20 to-pink-500/20 flex items-center justify-center">
-              <Upload class="w-6 h-6 text-primary" />
+            <div class="w-11 h-11 sm:w-12 sm:h-12 mx-auto mb-3 rounded-xl bg-gradient-to-br from-primary/20 to-pink-500/20 flex items-center justify-center">
+              <Upload class="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
             <p class="text-sm font-medium mb-1">拖拽图片到这里</p>
             <p class="text-xs text-muted-foreground mb-3">或点击选择文件（可选，用于参考图）</p>
@@ -327,7 +398,7 @@ const copyPrompt = () => {
               <img
                 :src="uploadedImage"
                 alt="Uploaded"
-                class="max-h-32 rounded-xl mx-auto"
+                class="max-h-40 sm:max-h-32 max-w-full rounded-xl mx-auto object-contain"
               />
               <button
                 @click="removeUploadedImage"
@@ -342,7 +413,7 @@ const copyPrompt = () => {
         <!-- Model & Size Selection -->
         <div class="glass-card">
           <h3 class="text-sm font-medium mb-4">模型与尺寸</h3>
-          <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
             <div>
               <label class="text-xs text-muted-foreground mb-2 block">模型</label>
               <select
@@ -371,24 +442,24 @@ const copyPrompt = () => {
         <!-- Style Selection -->
         <div class="glass-card">
           <h3 class="text-sm font-medium mb-4">选择风格</h3>
-          <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 sm:gap-3">
             <button
               v-for="style in styles"
               :key="style.id"
               @click="selectedStyle = style.id"
               :class="cn(
-                'style-card p-4 text-left',
+                'style-card p-3 sm:p-4 text-left',
                 selectedStyle === style.id && 'selected'
               )"
             >
               <div
                 :class="cn(
-                  'w-full h-12 rounded-lg mb-3 bg-gradient-to-br',
+                  'w-full h-10 sm:h-12 rounded-lg mb-2 sm:mb-3 bg-gradient-to-br',
                   style.colors
                 )"
               />
               <p class="font-medium text-sm">{{ style.name }}</p>
-              <p class="text-xs text-muted-foreground">{{ style.description }}</p>
+              <p class="text-xs text-muted-foreground leading-snug">{{ style.description }}</p>
             </button>
           </div>
         </div>
@@ -396,20 +467,46 @@ const copyPrompt = () => {
         <!-- Scene Selection -->
         <div class="glass-card">
           <h3 class="text-sm font-medium mb-4">选择场景</h3>
-          <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+          <div class="grid grid-cols-3 md:grid-cols-6 gap-2.5 sm:gap-3">
             <button
               v-for="scene in scenes"
               :key="scene.id"
               @click="selectedScene = scene.id"
               :class="cn(
-                'style-card p-3 text-center',
+                'style-card p-2.5 sm:p-3 text-center',
                 selectedScene === scene.id && 'selected'
               )"
             >
-              <span class="text-2xl mb-2 block">{{ scene.icon }}</span>
-              <p class="text-xs">{{ scene.name }}</p>
+              <span class="text-xl sm:text-2xl mb-1.5 sm:mb-2 block">{{ scene.icon }}</span>
+              <p class="text-xs leading-tight">{{ scene.name }}</p>
             </button>
           </div>
+        </div>
+
+        <!-- Count Selection (Prominent) -->
+        <div class="glass-card">
+          <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
+            <Hash class="w-4 h-4" />
+            生成数量
+          </h3>
+          <div class="grid grid-cols-5 gap-1.5 sm:gap-2">
+            <button
+              v-for="n in countOptions"
+              :key="n"
+              @click="count = n"
+              :class="cn(
+                'min-h-11 py-2.5 sm:py-3 rounded-xl font-semibold text-base sm:text-lg transition-all duration-200',
+                count === n
+                  ? 'bg-gradient-to-br from-primary to-pink-500 text-white shadow-lg shadow-primary/30'
+                  : 'glass hover:bg-white/10'
+              )"
+            >
+              {{ n }}
+            </button>
+          </div>
+          <p class="text-xs text-muted-foreground mt-2 text-center">
+            每张独立生成，共 {{ count }} 张
+          </p>
         </div>
 
         <!-- Generate Button (Prominent) -->
@@ -417,7 +514,7 @@ const copyPrompt = () => {
           @click="generateImages"
           :disabled="appStore.isGenerating || (!prompt && !uploadedImage)"
           :class="cn(
-            'w-full py-5 rounded-2xl font-bold text-xl transition-all duration-300',
+            'w-full py-4 sm:py-5 rounded-2xl font-bold text-lg sm:text-xl transition-all duration-300',
             'bg-gradient-to-r from-primary via-purple-500 to-pink-500',
             'hover:from-primary/90 hover:via-purple-500/90 hover:to-pink-500/90',
             'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -427,11 +524,11 @@ const copyPrompt = () => {
           )"
         >
           <template v-if="appStore.isGenerating">
-            <Loader2 class="w-6 h-6 animate-spin" />
+            <Loader2 class="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
             生成中 {{ isGeneratingCount }}/{{ count }}...
           </template>
           <template v-else>
-            <Wand2 class="w-6 h-6" />
+            <Wand2 class="w-5 h-5 sm:w-6 sm:h-6" />
             开始生成
           </template>
         </button>
@@ -454,33 +551,7 @@ const copyPrompt = () => {
       </div>
 
       <!-- Right Panel - Controls & Preview -->
-      <div class="space-y-6">
-        <!-- Count Selection (Prominent) -->
-        <div class="glass-card">
-          <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
-            <Hash class="w-4 h-4" />
-            生成数量
-          </h3>
-          <div class="grid grid-cols-5 gap-2">
-            <button
-              v-for="n in countOptions"
-              :key="n"
-              @click="count = n"
-              :class="cn(
-                'py-3 rounded-xl font-semibold text-lg transition-all duration-200',
-                count === n
-                  ? 'bg-gradient-to-br from-primary to-pink-500 text-white shadow-lg shadow-primary/30'
-                  : 'glass hover:bg-white/10'
-              )"
-            >
-              {{ n }}
-            </button>
-          </div>
-          <p class="text-xs text-muted-foreground mt-2 text-center">
-            每张独立生成，共 {{ count }} 张
-          </p>
-        </div>
-
+      <div class="space-y-4 sm:space-y-6">
         <!-- Generated Images -->
         <div class="glass-card">
           <h3 class="text-sm font-medium mb-4 flex items-center gap-2">
@@ -552,11 +623,11 @@ const copyPrompt = () => {
     <Transition name="fade">
       <div
         v-if="showApiKeyModal"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-0"
         @click.self="showApiKeyModal = false"
       >
-        <div class="glass-card w-full max-w-md mx-4 animate-in">
-          <div class="flex items-center justify-between mb-6">
+        <div class="glass-card w-full max-w-md max-h-[calc(100vh-1.5rem)] overflow-y-auto animate-in">
+          <div class="flex items-center justify-between mb-5 sm:mb-6">
             <h2 class="text-lg font-semibold">配置 API Key</h2>
             <button @click="showApiKeyModal = false" class="text-muted-foreground hover:text-foreground">
               <X class="w-5 h-5" />

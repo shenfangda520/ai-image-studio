@@ -92,31 +92,31 @@ const sizes = [
 </script>
 
 <template>
-  <div class="p-8 max-w-7xl mx-auto">
+  <div class="px-4 py-5 sm:p-6 lg:p-8 max-w-7xl mx-auto">
     <!-- Header -->
-    <div class="mb-8 animate-in">
-      <h1 class="text-3xl font-bold mb-2">
+    <div class="mb-5 sm:mb-8 animate-in">
+      <h1 class="text-2xl sm:text-3xl font-bold mb-1.5 sm:mb-2">
         <span class="gradient-text">设置</span>
       </h1>
-      <p class="text-muted-foreground">管理你的 API 配置和应用设置</p>
+      <p class="text-sm sm:text-base text-muted-foreground">管理你的 API 配置和应用设置</p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
       <!-- Sidebar -->
       <div class="glass-card p-2">
-        <nav class="space-y-1">
+        <nav class="flex gap-1 overflow-x-auto pb-1 lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
           <button
             v-for="section in sections"
             :key="section.id"
             @click="activeSection = section.id"
             :class="cn(
-              'sidebar-item w-full justify-start',
+              'sidebar-item flex-shrink-0 justify-center lg:w-full lg:justify-start',
               activeSection === section.id && 'active'
             )"
           >
             <component :is="section.icon" class="w-5 h-5" />
-            <span>{{ section.name }}</span>
-            <ChevronRight class="w-4 h-4 ml-auto opacity-50" />
+            <span class="whitespace-nowrap">{{ section.name }}</span>
+            <ChevronRight class="hidden lg:block w-4 h-4 ml-auto opacity-50" />
           </button>
         </nav>
       </div>
@@ -124,7 +124,7 @@ const sizes = [
       <!-- Content -->
       <div class="lg:col-span-3">
         <!-- API Section -->
-        <div v-if="activeSection === 'api'" class="space-y-6">
+        <div v-if="activeSection === 'api'" class="space-y-4 sm:space-y-6">
           <!-- API Key -->
           <div class="glass-card">
             <h2 class="text-lg font-semibold mb-4">API Key</h2>
@@ -170,7 +170,7 @@ const sizes = [
           <!-- Default Model -->
           <div class="glass-card">
             <h2 class="text-lg font-semibold mb-4">默认模型</h2>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 v-for="model in models"
                 :key="model.id"
@@ -189,7 +189,7 @@ const sizes = [
           <!-- Default Size -->
           <div class="glass-card">
             <h2 class="text-lg font-semibold mb-4">默认尺寸</h2>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
               <button
                 v-for="size in sizes"
                 :key="size.id"
@@ -210,7 +210,7 @@ const sizes = [
         <div v-if="activeSection === 'profile'" class="glass-card">
           <h2 class="text-lg font-semibold mb-6">个人信息</h2>
 
-          <div class="flex items-start gap-6 mb-6">
+          <div class="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 mb-6">
             <div class="relative">
               <img
                 :src="profile.avatar"

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicholasrice/tauri/refs/heads/dev/crates/tauri-utils/schema/capability.json",
+  "identifier": "default",
+  "description": "Default capabilities for AI Image Studio",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "http:default",
+    "http:allow-fetch",
+    "http:allow-fetch-cancel",
+    "http:allow-fetch-read-body",
+    "http:allow-fetch-send"
+  ]
+}
