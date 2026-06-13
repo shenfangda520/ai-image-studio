@@ -1,6 +1,6 @@
 [package]
 name = "ai-image-studio"
-version = "0.1.0"
+version = "1.0.0"
 description = "AI Image Generation Studio"
 authors = ["you"]
 edition = "2021"

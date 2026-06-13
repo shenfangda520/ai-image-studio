@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicholasrice/tauri/refs/heads/dev/crates/tauri-config-schema/schema.json",
   "productName": "AI Image Studio",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "com.ai-image-studio.app",
   "build": {
     "beforeDevCommand": "npm run dev",
